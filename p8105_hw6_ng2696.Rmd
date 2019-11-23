@@ -30,9 +30,23 @@ set.seed(10)
 birthweight = 
 read_csv("./data/birthweight.csv") %>%
   janitor::clean_names() %>%
- mutate(babysex=as.factor(babysex),frace=as.factor(frace),
-        malform = as.factor(malform), mrace = as.factor(mrace))
+ mutate(babysex=fct_inseq(as.factor(babysex)),frace=fct_inseq(as.factor(frace)),
+        malform = fct_inseq(as.factor(malform)), mrace = fct_inseq(as.factor(mrace)))
 glimpse(birthweight)
+
+fit1 = lm(bwt ~ gaweeks , data = birthweight)
+fit2 = lm(bwt ~ gaweeks + mrace , data = birthweight)
+fit1 %>% 
+  broom::tidy()
+fit2 %>% 
+  broom::tidy()
+modelr::add_residuals(birthweight, fit1) %>%
+  ggplot(aes(x = gaweeks, y = resid)) + geom_point()
+modelr::add_residuals(birthweight, fit2) %>%
+  ggplot(aes(x = gaweeks, y = resid)) +  geom_point()
+modelr::add_residuals(birthweight, fit2) %>%
+  ggplot(aes(x = mrace, y = resid)) +  geom_point()
+
 ```
 
-The number of missing values is ` r sum(is.na.data.frame(birthweight))`.
+The number of missing values is `r sum(is.na(birthweight))`.
