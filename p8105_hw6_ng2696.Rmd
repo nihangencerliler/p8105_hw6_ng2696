@@ -1,0 +1,38 @@
+---
+title: "Homework 6"
+author: "Nihan Gencerliler"
+date: "11/23/2019"
+output: html_document
+---
+```{r setup, include=FALSE}
+library(tidyverse)
+library(purrr)
+knitr::opts_chunk$set(
+	echo = TRUE,
+	warning = FALSE,
+	fig.width = 16, 
+  fig.height = 12,
+  out.width = "90%"
+)
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+set.seed(10)
+```
+
+## Problem 1
+
+```{r}
+birthweight = 
+read_csv("./data/birthweight.csv") %>%
+  janitor::clean_names() %>%
+ mutate(babysex=as.factor(babysex),frace=as.factor(frace),
+        malform = as.factor(malform), mrace = as.factor(mrace))
+glimpse(birthweight)
+```
+
+The number of missing values is ` r sum(is.na.data.frame(birthweight))`.
