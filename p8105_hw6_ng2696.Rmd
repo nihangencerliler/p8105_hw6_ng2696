@@ -40,12 +40,13 @@ read_csv("./data/birthweight.csv") %>%
 
 The number of missing values is `r sum(is.na(birthweight))`.
 
-I started building my model by selecting predictors based on what is known about factors that influence birthweight. I chose gaweeks, wtgain, smoken, mrace based on the information [here](https://www.stanfordchildrens.org/en/topic/default?id=low-birthweight-90-P02382). Because gestational age is the most important predictor of birthweight, I plotted it against birthweight to see what the most appropiate fit  would be. The scatterplot suggests linearity, so I will model it as such:
+I started building my model by selecting predictors based factors that are known to influence birthweight. I chose gaweeks, wtgain, smoken, mrace based on the information [here](https://www.stanfordchildrens.org/en/topic/default?id=low-birthweight-90-P02382). Because gestational age is the most important risk factor for low birthweight, I plotted it against birthweight to see what the most appropiate fit  would be. The scatterplot suggests linearity, so I will model it as such:
 ```{r}
 birthweight %>%
   ggplot(aes(x=gaweeks,y=bwt)) + 
   geom_point()
 ```
+
 I then fit a model of birthweight with the four predictors that I selected. Because all of the predictors are  significant, none of them will be removed.
 ```{r}
 fit1 = lm(bwt ~ gaweeks + wtgain + mrace + smoken, data = birthweight)
@@ -54,7 +55,7 @@ fit1 %>%
   knitr::kable()
 ```
 
-Plotting residuals against predicted values:
+Plot of residuals against predicted values:
 ```{r}
 modelr::add_residuals(birthweight, fit1) %>%
 modelr::add_predictions(fit1)  %>%
@@ -76,7 +77,8 @@ fit3 %>%
   broom::tidy() %>%
   knitr::kable()
 ```
-Cross-validation: 
+
+Plot of cross-validation errors of the three models: 
 ```{r}
 cv_df = 
   crossv_mc(birthweight, 100) 
@@ -98,6 +100,8 @@ pivot_longer(
   mutate(model = fct_inorder(model)) %>% 
   ggplot(aes(x = model, y = rmse)) + geom_violin()
 ```
+
+This plot clearly shows that my model has the highest prediction error out of the three. It is important to note that including variables such as baby length and head circumference does not make sense if we were, for instance, interested in modeling risk factors of low birthweight. Given that my model does not rely on these variables that inherently have a positive relationship with birthweight, its prediction error is not too bad. 
 
 ## Problem 2
 
