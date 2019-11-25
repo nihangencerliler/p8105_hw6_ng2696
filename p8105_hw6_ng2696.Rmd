@@ -7,6 +7,7 @@ output: html_document
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(purrr)
+library(modelr)
 knitr::opts_chunk$set(
 	echo = TRUE,
 	warning = FALSE,
@@ -26,27 +27,75 @@ set.seed(10)
 
 ## Problem 1
 
+Load and clean birthweight dataset:
+
 ```{r}
 birthweight = 
 read_csv("./data/birthweight.csv") %>%
   janitor::clean_names() %>%
  mutate(babysex=fct_inseq(as.factor(babysex)),frace=fct_inseq(as.factor(frace)),
         malform = fct_inseq(as.factor(malform)), mrace = fct_inseq(as.factor(mrace)))
-glimpse(birthweight)
-
-fit1 = lm(bwt ~ gaweeks , data = birthweight)
-fit2 = lm(bwt ~ gaweeks + mrace , data = birthweight)
-fit1 %>% 
-  broom::tidy()
-fit2 %>% 
-  broom::tidy()
-modelr::add_residuals(birthweight, fit1) %>%
-  ggplot(aes(x = gaweeks, y = resid)) + geom_point()
-modelr::add_residuals(birthweight, fit2) %>%
-  ggplot(aes(x = gaweeks, y = resid)) +  geom_point()
-modelr::add_residuals(birthweight, fit2) %>%
-  ggplot(aes(x = mrace, y = resid)) +  geom_point()
-
+#glimpse(birthweight)
 ```
 
 The number of missing values is `r sum(is.na(birthweight))`.
+
+I started building my model by selecting predictors based on what is known about factors that influence birthweight. I chose gaweeks, wtgain, smoken, mrace based on the information [here](https://www.stanfordchildrens.org/en/topic/default?id=low-birthweight-90-P02382). Because gestational age is the most important predictor of birthweight, I plotted it against birthweight to see what the most appropiate fit  would be. The scatterplot suggests linearity, so I will model it as such:
+```{r}
+birthweight %>%
+  ggplot(aes(x=gaweeks,y=bwt)) + 
+  geom_point()
+```
+I then fit a model of birthweight with the four predictors that I selected. Because all of the predictors are  significant, none of them will be removed.
+```{r}
+fit1 = lm(bwt ~ gaweeks + wtgain + mrace + smoken, data = birthweight)
+fit1 %>% 
+  broom::tidy() %>%
+  knitr::kable()
+```
+
+Plotting residuals against predicted values:
+```{r}
+modelr::add_residuals(birthweight, fit1) %>%
+modelr::add_predictions(fit1)  %>%
+ggplot(aes(x = pred, y = resid)) +  geom_point()
+```
+
+Model using length at birth and gestational age as predictors (main effects only):
+```{r}
+fit2 = lm(bwt ~ blength + gaweeks, data = birthweight)
+fit2 %>% 
+  broom::tidy() %>%
+  knitr::kable()
+```
+
+Model using head circumference, length, sex, and all interactions (including the three-way interaction) between these:
+```{r}
+fit3 = lm(bwt ~ bhead * blength * babysex, data = birthweight)
+fit3 %>% 
+  broom::tidy() %>%
+  knitr::kable()
+```
+Cross-validation: 
+```{r}
+cv_df = 
+  crossv_mc(birthweight, 100) 
+cv_df = 
+  cv_df %>% 
+  mutate(fit1  = map(train, ~lm(bwt ~ gaweeks + wtgain + mrace + smoken, data = .x)),
+         fit2  = map(train, ~lm(bwt ~ blength + gaweeks, data = .x)),
+         fit3  = map(train, ~lm(bwt ~ bhead * blength * babysex, data = .x))) %>% 
+  mutate(rmse_fit1 = map2_dbl(fit1, test, ~rmse(model = .x, data = .y)),
+         rmse_fit2 = map2_dbl(fit2, test, ~rmse(model = .x, data = .y)),
+         rmse_fit3 = map2_dbl(fit3, test, ~rmse(model = .x, data = .y)))
+cv_df %>% 
+  select(starts_with("rmse")) %>% 
+pivot_longer(
+    everything(),
+    names_to = "model", 
+    values_to = "rmse",
+    names_prefix = "rmse_") %>% 
+  mutate(model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse)) + geom_violin()
+```
+
