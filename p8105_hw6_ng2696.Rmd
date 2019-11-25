@@ -2,7 +2,7 @@
 title: "Homework 6"
 author: "Nihan Gencerliler"
 date: "11/23/2019"
-output: html_document
+output: github_document
 ---
 ```{r setup, include=FALSE}
 library(tidyverse)
