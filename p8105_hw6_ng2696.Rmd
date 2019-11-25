@@ -99,3 +99,62 @@ pivot_longer(
   ggplot(aes(x = model, y = rmse)) + geom_violin()
 ```
 
+## Problem 2
+
+```{r results="hide"}
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2017-01-01",
+    date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(id, USW00094728 = "CentralPark_NY"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
+```
+
+Create dataset with r-squared and log(beta0*beta1):
+
+```{r}
+bootstrap = 
+weather_df %>%
+  modelr::bootstrap(n = 5000) %>% 
+  mutate(
+    models = map(strap, ~ lm(tmax ~ tmin, data = .x)),
+    tidy = map(models, broom::tidy),
+    glance = map(models, broom::glance)) %>% 
+  unnest(tidy) %>% 
+  select(term,estimate,glance) %>%
+  unnest(glance) %>%
+  pivot_wider(names_from = "term",
+              values_from = "estimate") %>%
+  mutate(logbeta = log(`(Intercept)`*tmin))
+```
+
+The 95% confidence interval for r-squared is (0.894, 0.927):
+
+```{r}
+bootstrap %>%
+    ggplot(aes(x = r.squared)) + geom_density()
+bootstrap %>%
+  pull(r.squared) %>%
+quantile(probs = c(0.025,0.975)) %>%
+  knitr::kable()
+```
+
+
+The 95% confidence interval for log(beta0*beta1) is (1.964, 2.060):
+
+```{r}
+bootstrap %>%
+  ggplot(aes(x = logbeta)) + geom_density()
+bootstrap %>%
+  pull(logbeta) %>%
+quantile(probs = c(0.025,0.975)) %>%
+  knitr::kable()
+```
+
+The density plots created for both of these terms resemble normal distributions, as one would expect given the central limit theorem.
+
